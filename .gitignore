@@ -1,0 +1,24 @@
+# Python Virtual Environments
+env/
+venv/
+.venv/
+
+# Environment Variables (Kredensial Database)
+.env
+
+# Data Files (Wajib diabaikan agar GitHub tidak berat)
+data/
+*.csv
+*.xlsx
+*.json
+
+# Python Caches & Compiled Files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE & OS Specific Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
