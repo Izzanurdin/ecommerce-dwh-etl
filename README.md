@@ -93,3 +93,24 @@ Untuk menghindari *conflict* saat kolaborasi, gunakan alur berikut:
    * Pipeline: `git checkout -b feature/etl-pipeline`
 3. Setelah selesai, lakukan push: `git push origin feature/[nama-branch-anda]`
 4. Buka **Pull Request (PR)** di GitHub untuk di-review dan di-merge ke `main`.
+
+### 📊 Tracker Progres Pekerjaan
+
+Berikut adalah daftar tugas untuk setiap peran. Beri tanda centang (`[x]`) pada GitHub jika tugas telah diselesaikan.
+
+| Peran | Tugas / Jobdesc | Status | Target Branch |
+| :--- | :--- | :---: | :--- |
+| **Data Architect**<br>*(Anggota 1 / Izza)* | 1. Merancang Star Schema (3 Dimensi, 2 Fakta). | [ ] | `feature/schema-design` |
+| | 2. Membuat ERD dan script DBML (`/sql/dbml_star_schema.dbml`). | [ ] | `feature/schema-design` |
+| | 3. Membuat script DDL (`/sql/ddl_star_schema.sql`). | [ ] | `feature/schema-design` |
+| | 4. Melakukan setup Database lokal (MySQL/PostgreSQL). | [ ] | - |
+| **Cleansing Specialist**<br>*(Anggota 2)* | 1. Menentukan kategori file Kaggle yang akan dipakai. | [ ] | `feature/data-cleansing` |
+| | 2. Membuat script Regex untuk ekstrak ID Produk dari URL. | [ ] | `feature/data-cleansing` |
+| | 3. Membuat script pembersihan harga (hapus '$' dan spasi, ubah ke Float). | [ ] | `feature/data-cleansing` |
+| | 4. Mengimplementasikan handle *Null* dan penghapusan Duplikat (ID). | [ ] | `feature/data-cleansing` |
+| **Pipeline Engineer**<br>*(Anggota 3)* | 1. Membuat *repository* awal dan struktur folder (termasuk .gitignore). | [x] | `main` |
+| | 2. Membuat script `generate_dummy.py` (Pelanggan & Transaksi). | [ ] | `feature/etl-pipeline` |
+| | 3. Menyinkronkan ID Produk di data *dummy* dengan hasil *cleansing*. | [ ] | `feature/etl-pipeline` |
+| | 4. Merangkai pipeline ETL utama untuk *Load* ke DWH (`run_etl.py`). | [ ] | `feature/etl-pipeline` |
+| **Semua Anggota** | 1. Integrasi script secara menyeluruh (Uji coba dari awal ke akhir). | [ ] | `main` |
+| | 2. Dokumentasi *screenshot* hasil tabel DWH dan sebelum-sesudah data *cleansing*. | [ ] | - |
