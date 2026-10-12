@@ -106,6 +106,12 @@ Di dalam folder root proyek `(ecommerce-dwh-etl)`, Anda harus membuat struktur f
 
 Setelah 3 langkah di atas selesai, Anda siap untuk mulai coding dan menjalankan skrip generate_dummy.py atau cleanse_data.py tanpa error karena path datanya sudah sesuai!
 
+### 🏃‍♂️ Alur Eksekusi (Workflow)
+Jika Anda bertugas di bagian pipeline, pastikan urutan eksekusi skrip dilakukan seperti ini:
+1. `python src/cleanse_data.py` -> Membaca data mentah dari `data/raw/`, membersihkannya, lalu menyimpan hasilnya ke `data/interim/`.
+2. `python src/generate_dummy.py` -> Membaca data bersih dari `data/interim/` untuk disambungkan dengan pelanggan & transaksi dummy, lalu menyimpannya ke `data/processed/`.
+3. `python src/run_etl.py` -> Mendorong semua data final di `data/processed/` ke dalam database DWH.
+
 ## 🌿 Aturan Git Branching
 
 Untuk menghindari *conflict* saat kolaborasi, gunakan alur berikut:
@@ -116,6 +122,8 @@ Untuk menghindari *conflict* saat kolaborasi, gunakan alur berikut:
    * Pipeline: `git checkout -b feature/etl-pipeline`
 3. Setelah selesai, lakukan push: `git push origin feature/[nama-branch-anda]`
 4. Buka **Pull Request (PR)** di GitHub untuk di-review dan di-merge ke `main`.
+
+Catatan: Selama PR (Pull Request) belum di-merge ke main, Anda bisa terus melakukan git push berkali-kali ke dalam branch feature yang sama milik Anda.
 
 ### 📊 Tracker Progres Pekerjaan
 
