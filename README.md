@@ -57,31 +57,54 @@ ecommerce-dwh-etl/
 └── README.md
 ```
 
-## 🚀 Panduan Setup Lokal
+## Panduan Setup & Persiapan Dataset Lokal (WAJIB DIBACA!)
+Karena file CSV berukuran besar, folder data/ tidak disertakan di dalam repository GitHub ini. Setiap anggota kelompok wajib melakukan setup dataset secara mandiri di komputer masing-masing sebelum menjalankan skrip.
 
-1. **Clone Repository**
-   ```bash
-   git clone https://github.com/Izzanurdin/ecommerce-dwh-etl.git
-   cd ecommerce-dwh-etl
-   ```
+Ikuti langkah-langkah berikut secara berurutan:
 
-2. **Buat & Aktifkan Virtual Environment**
-   ```bash
-   python -m venv env
-   # Windows:
-   env\Scripts\activate
-   # Mac/Linux:
-   source env/bin/activate
-   ```
+### Langkah 1: Persiapan Repository
+1. Clone Repository ke komputer lokal Anda:
 
-3. **Install Dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+git clone https://github.com/Izzanurdin/ecommerce-dwh-etl.git
+cd ecommerce-dwh-etl
+```
 
-4. **Siapkan Data Raw**
-   * Buat folder `data/raw/` di root direktori proyek Anda.
-   * Download dataset CSV dari Kaggle dan letakkan di dalam folder tersebut.
+2. Buat & Aktifkan Virtual Environment (Sangat Disarankan):
+
+```bash
+python -m venv env
+# Untuk pengguna Windows:
+env\Scripts\activate
+# Untuk pengguna Mac/Linux:
+source env/bin/activate
+```
+
+3. Install Dependencies yang dibutuhkan:
+
+```bash
+pip install -r requirements.txt
+```
+### Langkah 2: Persiapan Folder Data Lokal
+Di dalam folder root proyek `(ecommerce-dwh-etl)`, Anda harus membuat struktur folder untuk menampung data secara manual:
+
+1. Buat folder baru dengan nama data.
+
+2. Di dalam folder data, buat 3 sub-folder: `raw, interim, dan processed.`
+(Struktur lokal Anda sekarang harus terlihat seperti `ecommerce-dwh-etl/data/raw/`)
+
+### Langkah 3: Download & Penempatan Dataset Kaggle
+1. Buka tautan dataset di Kaggle: [E-Commerce Data (SHEIN)](https://www.kaggle.com/datasets/oleksiimartusiuk/e-commerce-data-shein/data)
+
+2. Unduh file `.zip` dataset tersebut.
+
+3. Ekstrak file `.zip` yang sudah diunduh.
+
+4. Pilih minimal 1-3 file `.csv` kategori yang ingin Anda gunakan (misal: `us-shein-electronics-4395.csv`, `us-shein-appliances-3987.csv`).
+
+5. Pindahkan (Copy/Paste) file CSV pilihan tersebut ke dalam folder `ecommerce-dwh-etl/data/raw/` yang baru saja Anda buat.
+
+Setelah 3 langkah di atas selesai, Anda siap untuk mulai coding dan menjalankan skrip generate_dummy.py atau cleanse_data.py tanpa error karena path datanya sudah sesuai!
 
 ## 🌿 Aturan Git Branching
 
