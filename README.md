@@ -1,147 +1,861 @@
 # 🛒 E-Commerce Data Warehouse & ETL Pipeline
 
-Proyek ini membangun Data Warehouse (DWH) dengan pendekatan Star Schema menggunakan dataset E-Commerce dari Kaggle. Proses ETL (Extract, Transform, Load) diimplementasikan sepenuhnya menggunakan Python untuk membersihkan data, menyimulasikan transaksi harian, dan memuatnya ke dalam database.
+Proyek ini membangun **Data Warehouse (DWH)** menggunakan pendekatan **Star Schema** dengan dataset E-Commerce dari Kaggle.
 
-## ⚠️ Disclaimer Dataset & Strategi (Penting!)
+Seluruh proses **ETL (Extract, Transform, Load)** diimplementasikan menggunakan Python untuk:
 
-Dataset utama (Produk) yang digunakan dalam proyek ini bersumber dari:
-🔗 **[Kaggle: E-Commerce Data (SHEIN)](https://www.kaggle.com/datasets/oleksiimartusiuk/e-commerce-data-shein/data)**
+* 🧹 Membersihkan dan mentransformasi data mentah
+* 🧪 Menghasilkan data pelanggan dan transaksi sintetis
+* 🔗 Menghubungkan transaksi dengan produk asli dari dataset Kaggle
+* 🏗️ Membentuk tabel **Fact** dan **Dimension**
+* 📥 Memuat data final ke database Data Warehouse
+* 📊 Menyiapkan data agar dapat digunakan untuk analisis penjualan
+
+---
+
+## 📌 1. Gambaran Singkat Proyek
+
+### 🎯 Tujuan
+
+Data Warehouse dirancang untuk menjawab beberapa pertanyaan analitik utama:
+
+1. **Bagaimana tren penjualan dan pendapatan dari waktu ke waktu?**
+2. **Bagaimana performa diskon terhadap jumlah produk yang terjual?**
+3. **Siapa pelanggan dengan nilai transaksi tertinggi berdasarkan membership?**
+4. **Kategori produk mana yang menghasilkan pendapatan terbesar?**
+
+### 🔄 Gambaran Alur Data
+
+```text
+        DATASET KAGGLE
+             │
+             ▼
+       ┌─────────────┐
+       │   EXTRACT   │
+       └──────┬──────┘
+              │
+              ▼
+       ┌─────────────┐
+       │  CLEANSE &  │
+       │ TRANSFORM   │
+       └──────┬──────┘
+              │
+              ▼
+        DATA PRODUK
+        YANG BERSIH
+              │
+              ├──────────────┐
+              │              │
+              ▼              ▼
+      GENERATE DUMMY     DIM PRODUK
+       CUSTOMER &            │
+       TRANSACTION           │
+              │              │
+              └──────┬───────┘
+                     ▼
+              ┌─────────────┐
+              │  LOAD KE    │
+              │ DATA WAREHOUSE│
+              └──────┬──────┘
+                     │
+                     ▼
+              ⭐ STAR SCHEMA
+```
+
+> **Intinya:** Dataset Kaggle digunakan sebagai **Master Data Produk**, sedangkan data pelanggan dan transaksi dibuat secara sintetis agar dapat membangun struktur Data Warehouse yang lengkap.
+
+---
+
+# ⚠️ 2. Dataset & Strategi Data
+
+## 📦 Dataset Utama
+
+Dataset produk yang digunakan berasal dari:
+
+🔗 **[Kaggle — E-Commerce Data (SHEIN)](https://www.kaggle.com/datasets/oleksiimartusiuk/e-commerce-data-shein/data)**
+
+Dataset ini digunakan terutama sebagai sumber **Master Data Produk**.
+
+---
+
+## 🧹 Karakteristik Data Mentah
+
+Dataset Kaggle memiliki beberapa masalah yang sengaja digunakan sebagai bagian dari proses **Data Cleansing**.
+
+| Masalah                    | Kondisi Data                            | Solusi                                   |
+| -------------------------- | --------------------------------------- | ---------------------------------------- |
+| Product ID tidak eksplisit | ID terdapat di URL                      | Ekstraksi menggunakan Regex              |
+| Harga berupa String        | Contoh: `$12.50`                        | Hapus simbol `$`, lalu convert ke Float  |
+| Missing Value              | Beberapa kolom memiliki nilai kosong    | Handle Null                              |
+| Duplikasi                  | Terdapat kemungkinan ID produk duplikat | Deduplicate berdasarkan Product ID       |
+| Kategori tidak eksplisit   | Kategori mengikuti nama file            | Kategori diambil dari metadata/nama file |
+
+---
+
+## 🔀 Hybrid Dataset Strategy
+
+Dataset Kaggle pada dasarnya merupakan **Master Data Katalog Produk**, bukan dataset transaksi lengkap.
+
+Karena Data Warehouse membutuhkan **Fact Table** dan **Dimension Table**, proyek ini menggunakan pendekatan **Hybrid Dataset**:
+
+### Data asli dari Kaggle
+
+Digunakan untuk:
+
+* Product ID
+* Nama produk
+* Harga
+* Rating/data produk lainnya
+* Kategori produk
+
+### Data sintetis / Dummy
+
+Dibuat menggunakan Python untuk:
+
+* Data pelanggan
+* Membership pelanggan
+* Transaksi
+* Quantity terjual
+* Diskon
+* Tanggal transaksi
+
+### Hubungan Data
+
+```text
+Kaggle
+  │
+  ▼
+Produk Asli
+  │
+  │ Product ID
+  ▼
+Data Cleansing
+  │
+  ▼
+Clean Product Data
+  │
+  ├───────────────┐
+  │               │
+  ▼               ▼
+Dim Produk    Dummy Transaction
+                  │
+                  ▼
+             Fact Penjualan
+```
+
+> ⚠️ **Penting:** Data transaksi merupakan **data sintetis**, bukan transaksi aktual yang berasal dari Kaggle.
+
+---
+
+# 🏗️ 3. Arsitektur Data Warehouse
+
+Proyek menggunakan **Star Schema** untuk mengoptimalkan kebutuhan analitik.
+
+## ⭐ Struktur Star Schema
+
+Data Warehouse terdiri dari:
+
+### Dimension Tables
+
+* `dim_produk`
+* `dim_pelanggan`
+* `dim_waktu`
+
+### Fact Tables
+
+* `fact_penjualan`
+* `fact_performa_diskon`
+
+Setiap tabel fakta terhubung dengan tabel dimensi menggunakan **Surrogate Key (SK)** berupa integer unik.
+
+---
+
+## 🧩 Struktur Konseptual
+
+Secara konseptual, Data Warehouse terdiri dari **3 Dimension Table** dan **2 Fact Table**.
+
+### ⭐ Struktur Utama
+
+```text
+                         ┌─────────────────┐
+                         │   dim_waktu     │
+                         │─────────────────│
+                         │ waktu_sk (PK)   │
+                         │ tanggal         │
+                         │ hari            │
+                         │ bulan           │
+                         │ tahun           │
+                         └────────┬────────┘
+                                  │
+                                  │
+                                  ▼
+┌─────────────────┐       ┌─────────────────────┐       ┌─────────────────┐
+│  dim_produk     │──────►│   fact_penjualan    │◄──────│ dim_pelanggan   │
+│─────────────────│       │─────────────────────│       │─────────────────│
+│ produk_sk (PK)  │       │ penjualan_sk (PK)   │       │ pelanggan_sk(PK)│
+│ product_id      │       │ produk_sk (FK)      │       │ customer_id     │
+│ nama_produk     │       │ pelanggan_sk (FK)   │       │ membership      │
+│ kategori        │       │ waktu_sk (FK)       │       │ ...             │
+│ harga           │       │ qty                 │       └─────────────────┘
+│ ...             │       │ harga_satuan        │
+└─────────────────┘       │ total_penjualan     │
+                          └──────────┬──────────┘
+                                     │
+                                     │
+                                     │
+                          ┌──────────▼──────────┐
+                          │ fact_performa_diskon│
+                          │─────────────────────│
+                          │ diskon_sk (PK)      │
+                          │ produk_sk (FK)      │
+                          │ waktu_sk (FK)       │
+                          │ diskon              │
+                          │ qty_terjual         │
+                          │ ...                 │
+                          └─────────────────────┘
+```
+
+### 🔗 Relasi Utama
+
+| Tabel                  | Berperan sebagai | Terhubung dengan                         |
+| ---------------------- | ---------------- | ---------------------------------------- |
+| `dim_produk`           | Dimension        | `fact_penjualan`, `fact_performa_diskon` |
+| `dim_pelanggan`        | Dimension        | `fact_penjualan`                         |
+| `dim_waktu`            | Dimension        | `fact_penjualan`, `fact_performa_diskon` |
+| `fact_penjualan`       | Fact             | Produk, Pelanggan, Waktu                 |
+| `fact_performa_diskon` | Fact             | Produk, Waktu                            |
+
+### 💡 Cara Membacanya
+
+**`fact_penjualan`** merupakan fact table utama yang mencatat kejadian transaksi.
+
+```text
+Produk + Pelanggan + Waktu
+            │
+            ▼
+     FACT PENJUALAN
+            │
+            ▼
+   Qty & Total Penjualan
+```
+
+Sedangkan **`fact_performa_diskon`** digunakan secara khusus untuk menganalisis hubungan antara diskon dan performa penjualan produk.
+
+```text
+Produk + Waktu
+      │
+      ▼
+FACT PERFORMA DISKON
+      │
+      ▼
+Diskon + Qty Terjual
+```
+
+Dengan struktur ini, analisis dapat dilakukan berdasarkan:
+
+* 📅 **Waktu** → tren penjualan harian/bulanan/tahunan
+* 🛍️ **Produk** → performa dan pendapatan berdasarkan produk/kategori
+* 👤 **Pelanggan** → profil dan nilai transaksi berdasarkan membership
+* 🏷️ **Diskon** → pengaruh diskon terhadap jumlah produk terjual
 
 
-**Catatan Karakteristik Data & Pendekatan Tim:**
-1. **Unstructured Raw Data:** Dataset asli sangat kotor. ID produk tidak tersedia secara eksplisit (harus diekstrak via Regex dari URL), harga masih berupa teks string (contoh: `$12.50`), dan kategori bergantung pada nama file CSV. Ini menjadi fokus utama teknik *Data Cleansing* kami.
-2. **Hybrid Dataset Strategy:** Dataset Kaggle pada dasarnya adalah *Master Data Katalog*. Untuk memenuhi syarat arsitektur DWH (Tabel Fakta & Dimensi), data pelanggan demografis dan kejadian transaksi di-*generate* secara sintetis (Dummy Data) menggunakan skrip Python. Data dummy tersebut direlasikan secara utuh ke ID Produk riil hasil ekstraksi dari Kaggle.
+### ERD
 
-## 🏗️ Arsitektur Data Warehouse (Star Schema)
+Visualisasi lengkap Star Schema dapat dilihat pada:
 
-Sistem Data Warehouse ini dirancang untuk menjawab 3 pertanyaan analitik utama:
-1.  **Tren Penjualan & Pendapatan:** Tren penjualan harian serta total pendapatan per kategori produk.
-2.  **Efektivitas Diskon:** Performa diskon produk dan dampaknya terhadap kuantitas barang terjual (*qty*).
-3.  **Profil Pelanggan:** Profil pelanggan (berdasarkan tipe *membership*) dengan nilai transaksi tertinggi.
-
-Untuk mengoptimalkan kueri analitis, arsitektur ini menggunakan **Star Schema** yang terdiri dari:
-*   **3 Tabel Dimensi:** `dim_produk`, `dim_pelanggan`, `dim_waktu`
-*   **2 Tabel Fakta:** `fact_penjualan`, `fact_performa_diskon`
-
-Setiap tabel dimensi terhubung ke tabel fakta menggunakan *Surrogate Key* (SK) berbentuk integer unik.
-
-### Entity Relationship Diagram (ERD)
-*(Visualisasi skema secara utuh dapat diakses melalui gambar di bawah ini)*
 ![Star Schema ERD](./sql/star-schema-e-commerce-dwh.png)
 
-## 👥 Tim & Pembagian Tugas
+---
 
-*   **Anggota 1: Muhammad Izzanurdin Hasan_2505551075** - *Data Architect*
-    *   Fokus Area: Folder `/sql/`
-    *   Tugas: Mendesain Star Schema dan membuat script DDL database.
-*   **Anggota 2: Christopher** - *Cleansing Specialist*
-    *   Fokus Area: Folder `/notebooks/` & `src/cleanse_data.py`
-    *   Tugas: Data profiling dan implementasi 3 teknik cleansing (Handle Null, Duplicates, Bad Logic).
-*   **Anggota 3: Mul** - *Pipeline Engineer*
-    *   Fokus Area: Folder `/src/`
-    *   Tugas: Membuat generator data dummy transaksi dan merangkai alur Extract & Load ke DWH.
+# 👥 4. Tim & Pembagian Tugas
 
-## 🗂️ Struktur Folder
+| Anggota                                  | Role                    | Fokus                      |
+| ---------------------------------------- | ----------------------- | -------------------------- |
+| **Muhammad Izzanurdin Hasan_2505551075** | 🏗️ Data Architect      | Star Schema & Database     |
+| **Christopher**                          | 🧹 Cleansing Specialist | Data Profiling & Cleansing |
+| **Mul**                                  | ⚙️ Pipeline Engineer    | Dummy Data & ETL           |
+
+---
+
+## 🏗️ Anggota 1 — Data Architect
+
+**Muhammad Izzanurdin Hasan_2505551075**
+
+### Fokus
+
+```text
+/sql/
+```
+
+### Tanggung Jawab
+
+* Mendesain Star Schema
+* Membuat ERD
+* Membuat DBML
+* Membuat DDL Database
+* Menentukan Primary Key dan Foreign Key
+* Melakukan setup database lokal
+
+---
+
+## 🧹 Anggota 2 — Cleansing Specialist
+
+**Christopher**
+
+### Fokus
+
+```text
+/notebooks/
+/src/cleanse_data.py
+```
+
+### Tanggung Jawab
+
+* Data profiling
+* Menentukan kategori dataset yang digunakan
+* Ekstraksi Product ID menggunakan Regex
+* Membersihkan harga
+* Handle Missing Value
+* Menghapus duplikasi
+* Validasi hasil cleansing
+
+---
+
+## ⚙️ Anggota 3 — Pipeline Engineer
+
+**Mul**
+
+### Fokus
+
+```text
+/src/
+```
+
+### Tanggung Jawab
+
+* Membuat generator data dummy
+* Membuat data pelanggan
+* Membuat data transaksi
+* Menghubungkan transaksi dengan Product ID hasil cleansing
+* Membuat pipeline ETL
+* Melakukan Load data ke Data Warehouse
+
+---
+
+# 🗂️ 5. Struktur Repository
 
 ```text
 ecommerce-dwh-etl/
-├── data/                  # Tidak masuk GitHub (berisi raw/, interim/, processed/)
-├── notebooks/             # Eksplorasi data & profiling (.ipynb)
-├── src/                   # Source code ETL Python
+│
+├── data/                    # Tidak masuk GitHub
+│   ├── raw/                 # Dataset mentah dari Kaggle
+│   ├── interim/             # Data setelah cleansing
+│   └── processed/           # Data final siap masuk DWH
+│
+├── notebooks/               # Eksplorasi & data profiling
+│   └── *.ipynb
+│
+├── src/                     # Source code ETL
 │   ├── generate_dummy.py
 │   ├── cleanse_data.py
 │   └── run_etl.py
-├── sql/                   # DDL Database
+│
+├── sql/                     # Database & Star Schema
+│   ├── dbml_star_schema.dbml
+│   ├── ddl_star_schema.sql
+│   └── star-schema-e-commerce-dwh.png
+│
 ├── .gitignore
 ├── requirements.txt
 └── README.md
 ```
 
-## Panduan Setup & Persiapan Dataset Lokal (WAJIB DIBACA!)
-Karena file CSV berukuran besar, folder data/ tidak disertakan di dalam repository GitHub ini. Setiap anggota kelompok wajib melakukan setup dataset secara mandiri di komputer masing-masing sebelum menjalankan skrip.
+### 📁 Fungsi Folder Data
 
-Ikuti langkah-langkah berikut secara berurutan:
+| Folder            | Isi                       | Status       |
+| ----------------- | ------------------------- | ------------ |
+| `data/raw/`       | Dataset asli Kaggle       | Input        |
+| `data/interim/`   | Dataset setelah cleansing | Intermediate |
+| `data/processed/` | Data final siap di-load   | Output ETL   |
 
-### Langkah 1: Persiapan Repository
-1. Clone Repository ke komputer lokal Anda:
+> 🚫 Folder `data/` **tidak di-upload ke GitHub** karena ukuran dataset cukup besar.
+
+---
+
+# 🚀 6. Setup Project di Komputer Lokal
+
+> ⚠️ **WAJIB:** Setiap anggota kelompok harus melakukan setup dataset secara lokal sebelum menjalankan script Python.
+
+---
+
+## Step 1 — Clone Repository
 
 ```bash
 git clone https://github.com/Izzanurdin/ecommerce-dwh-etl.git
 cd ecommerce-dwh-etl
 ```
 
-2. Buat & Aktifkan Virtual Environment (Sangat Disarankan):
+---
+
+## Step 2 — Buat Virtual Environment
+
+Disarankan menggunakan virtual environment agar dependency project tidak bercampur dengan Python system.
+
+### Windows
 
 ```bash
 python -m venv env
-# Untuk pengguna Windows:
 env\Scripts\activate
-# Untuk pengguna Mac/Linux:
+```
+
+### Mac / Linux
+
+```bash
+python -m venv env
 source env/bin/activate
 ```
 
-3. Install Dependencies yang dibutuhkan:
+---
+
+## Step 3 — Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
-### Langkah 2: Persiapan Folder Data Lokal
-Di dalam folder root proyek `(ecommerce-dwh-etl)`, Anda harus membuat struktur folder untuk menampung data secara manual:
 
-1. Buat folder baru dengan nama data.
+---
 
-2. Di dalam folder data, buat 3 sub-folder: `raw, interim, dan processed.`
-(Struktur lokal Anda sekarang harus terlihat seperti `ecommerce-dwh-etl/data/raw/`)
+# 📦 7. Persiapan Dataset
 
-### Langkah 3: Download & Penempatan Dataset Kaggle
-1. Buka tautan dataset di Kaggle: [E-Commerce Data (SHEIN)](https://www.kaggle.com/datasets/oleksiimartusiuk/e-commerce-data-shein/data)
+## Step 1 — Buat Folder Data
 
-2. Unduh file `.zip` dataset tersebut.
+Di dalam root project:
 
-3. Ekstrak file `.zip` yang sudah diunduh.
+```text
+ecommerce-dwh-etl/
+└── data/
+```
 
-4. Pilih minimal 1-3 file `.csv` kategori yang ingin Anda gunakan (misal: `us-shein-electronics-4395.csv`, `us-shein-appliances-3987.csv`).
+Kemudian buat:
 
-5. Pindahkan (Copy/Paste) file CSV pilihan tersebut ke dalam folder `ecommerce-dwh-etl/data/raw/` yang baru saja Anda buat.
+```text
+data/
+├── raw/
+├── interim/
+└── processed/
+```
 
-Setelah 3 langkah di atas selesai, Anda siap untuk mulai coding dan menjalankan skrip generate_dummy.py atau cleanse_data.py tanpa error karena path datanya sudah sesuai!
+Sehingga struktur akhirnya:
 
-### 🏃‍♂️ Alur Eksekusi (Workflow)
-Jika Anda bertugas di bagian pipeline, pastikan urutan eksekusi skrip dilakukan seperti ini:
-1. `python src/cleanse_data.py` -> Membaca data mentah dari `data/raw/`, membersihkannya, lalu menyimpan hasilnya ke `data/interim/`.
-2. `python src/generate_dummy.py` -> Membaca data bersih dari `data/interim/` untuk disambungkan dengan pelanggan & transaksi dummy, lalu menyimpannya ke `data/processed/`.
-3. `python src/run_etl.py` -> Mendorong semua data final di `data/processed/` ke dalam database DWH.
+```text
+ecommerce-dwh-etl/data/raw/
+ecommerce-dwh-etl/data/interim/
+ecommerce-dwh-etl/data/processed/
+```
 
-## 🌿 Aturan Git Branching
+---
 
-Untuk menghindari *conflict* saat kolaborasi, gunakan alur berikut:
-1. Pastikan Anda berada di branch terbaru: `git pull origin main`
-2. Buat branch baru sesuai tugas:
-   * Data Architect: `git checkout -b feature/schema-design`
-   * Cleansing: `git checkout -b feature/data-cleansing`
-   * Pipeline: `git checkout -b feature/etl-pipeline`
-3. Setelah selesai, lakukan push: `git push origin feature/[nama-branch-anda]`
-4. Buka **Pull Request (PR)** di GitHub untuk di-review dan di-merge ke `main`.
+## Step 2 — Download Dataset
 
-Catatan: Selama PR (Pull Request) belum di-merge ke main, Anda bisa terus melakukan git push berkali-kali ke dalam branch feature yang sama milik Anda.
+Buka:
 
-### 📊 Tracker Progres Pekerjaan
+🔗 **[Kaggle — E-Commerce Data (SHEIN)](https://www.kaggle.com/datasets/oleksiimartusiuk/e-commerce-data-shein/data)**
 
-Berikut adalah daftar tugas untuk setiap peran. Beri tanda centang (`[x]`) pada GitHub jika tugas telah diselesaikan.
+Kemudian:
 
-| Peran | Tugas / Jobdesc | Status | Target Branch |
-| :--- | :--- | :---: | :--- |
-| **Data Architect**<br>*(Anggota 1 / Izza)* | 1. Merancang Star Schema (3 Dimensi, 2 Fakta). | [ ] | `feature/schema-design` |
-| | 2. Membuat ERD dan script DBML (`/sql/dbml_star_schema.dbml`). | [ ] | `feature/schema-design` |
-| | 3. Membuat script DDL (`/sql/ddl_star_schema.sql`). | [ ] | `feature/schema-design` |
-| | 4. Melakukan setup Database lokal (MySQL/PostgreSQL). | [ ] | - |
-| **Cleansing Specialist**<br>*(Anggota 2)* | 1. Menentukan kategori file Kaggle yang akan dipakai. | [ ] | `feature/data-cleansing` |
-| | 2. Membuat script Regex untuk ekstrak ID Produk dari URL. | [ ] | `feature/data-cleansing` |
-| | 3. Membuat script pembersihan harga (hapus '$' dan spasi, ubah ke Float). | [ ] | `feature/data-cleansing` |
-| | 4. Mengimplementasikan handle *Null* dan penghapusan Duplikat (ID). | [ ] | `feature/data-cleansing` |
-| **Pipeline Engineer**<br>*(Anggota 3)* | 1. Membuat *repository* awal dan struktur folder (termasuk .gitignore). | [x] | `main` |
-| | 2. Membuat script `generate_dummy.py` (Pelanggan & Transaksi). | [ ] | `feature/etl-pipeline` |
-| | 3. Menyinkronkan ID Produk di data *dummy* dengan hasil *cleansing*. | [ ] | `feature/etl-pipeline` |
-| | 4. Merangkai pipeline ETL utama untuk *Load* ke DWH (`run_etl.py`). | [ ] | `feature/etl-pipeline` |
-| **Semua Anggota** | 1. Integrasi script secara menyeluruh (Uji coba dari awal ke akhir). | [ ] | `main` |
-| | 2. Dokumentasi *screenshot* hasil tabel DWH dan sebelum-sesudah data *cleansing*. | [ ] | - |
+1. Download file `.zip`
+2. Extract file tersebut
+3. Pilih **1–3 file CSV kategori**
+4. Copy file CSV tersebut ke:
+
+```text
+data/raw/
+```
+
+Contoh:
+
+```text
+data/
+└── raw/
+    ├── us-shein-electronics-4395.csv
+    └── us-shein-appliances-3987.csv
+```
+
+> 💡 Tidak perlu memasukkan seluruh dataset. Untuk development/testing, gunakan 1–3 kategori terlebih dahulu.
+
+---
+
+# 🔄 8. ETL Workflow
+
+Setelah dataset tersedia, proses dilakukan dalam **3 tahap utama**:
+
+```text
+RAW DATA
+   │
+   ▼
+[1] CLEANSE
+   │
+   ▼
+INTERIM DATA
+   │
+   ▼
+[2] GENERATE DUMMY
+   │
+   ▼
+PROCESSED DATA
+   │
+   ▼
+[3] LOAD
+   │
+   ▼
+DATA WAREHOUSE
+```
+
+---
+
+## 1️⃣ Data Cleansing
+
+Jalankan:
+
+```bash
+python src/cleanse_data.py
+```
+
+Script akan:
+
+* Membaca data dari `data/raw/`
+* Mengekstrak Product ID
+* Membersihkan harga
+* Menangani Null
+* Menghapus duplikasi
+* Melakukan validasi data
+
+Output:
+
+```text
+data/interim/
+```
+
+---
+
+## 2️⃣ Generate Dummy Data
+
+Jalankan:
+
+```bash
+python src/generate_dummy.py
+```
+
+Script akan:
+
+* Membaca data produk bersih
+* Membuat data pelanggan sintetis
+* Membuat data transaksi sintetis
+* Membuat membership
+* Membuat quantity
+* Membuat data diskon
+* Menghubungkan transaksi dengan Product ID
+
+Output:
+
+```text
+data/processed/
+```
+
+---
+
+## 3️⃣ Load ke Data Warehouse
+
+Jalankan:
+
+```bash
+python src/run_etl.py
+```
+
+Script akan:
+
+* Membaca data dari `data/processed/`
+* Melakukan transformasi akhir jika diperlukan
+* Mengisi tabel dimensi
+* Mengisi tabel fakta
+* Memuat data ke database DWH
+
+Output akhirnya:
+
+```text
+DATABASE
+   │
+   ├── dim_produk
+   ├── dim_pelanggan
+   ├── dim_waktu
+   ├── fact_penjualan
+   └── fact_performa_diskon
+```
+
+---
+
+# 🌿 9. Git Branching Strategy
+
+Agar pekerjaan antar anggota tidak saling menimpa, **jangan langsung bekerja di `main`**.
+
+## Alur kerja
+
+```text
+main
+ │
+ ├── feature/schema-design
+ │
+ ├── feature/data-cleansing
+ │
+ └── feature/etl-pipeline
+```
+
+---
+
+## Step 1 — Update Branch
+
+Sebelum mulai bekerja:
+
+```bash
+git checkout main
+git pull origin main
+```
+
+---
+
+## Step 2 — Buat Feature Branch
+
+### Data Architect
+
+```bash
+git checkout -b feature/schema-design
+```
+
+### Cleansing Specialist
+
+```bash
+git checkout -b feature/data-cleansing
+```
+
+### Pipeline Engineer
+
+```bash
+git checkout -b feature/etl-pipeline
+```
+
+---
+
+## Step 3 — Commit Perubahan
+
+Contoh:
+
+```bash
+git add .
+git commit -m "feat: add product cleansing logic"
+```
+
+---
+
+## Step 4 — Push Branch
+
+```bash
+git push origin feature/nama-branch
+```
+
+Contoh:
+
+```bash
+git push origin feature/data-cleansing
+```
+
+---
+
+## Step 5 — Pull Request
+
+Setelah selesai:
+
+```text
+Feature Branch
+      │
+      ▼
+ GitHub Pull Request
+      │
+      ▼
+ Code Review
+      │
+      ▼
+    main
+```
+
+> 💡 Selama Pull Request belum di-merge, anggota masih boleh melakukan `git push` berkali-kali ke branch yang sama.
+
+---
+
+# 📊 10. Progress Tracker
+
+Gunakan tabel berikut untuk memantau progres masing-masing anggota.
+
+**Status:**
+
+* `[ ]` = Belum selesai
+* `[x]` = Selesai
+
+| Role                        | Task                                        | Status | Branch                   |
+| --------------------------- | ------------------------------------------- | :----: | ------------------------ |
+| 🏗️ **Data Architect**      | Merancang Star Schema (3 Dimensi + 2 Fakta) |   [ ]  | `feature/schema-design`  |
+|                             | Membuat ERD & DBML                          |   [ ]  | `feature/schema-design`  |
+|                             | Membuat DDL Database                        |   [ ]  | `feature/schema-design`  |
+|                             | Setup Database lokal                        |   [ ]  | —                        |
+| 🧹 **Cleansing Specialist** | Menentukan kategori dataset Kaggle          |   [ ]  | `feature/data-cleansing` |
+|                             | Ekstraksi Product ID dengan Regex           |   [ ]  | `feature/data-cleansing` |
+|                             | Membersihkan data harga                     |   [ ]  | `feature/data-cleansing` |
+|                             | Handle Null                                 |   [ ]  | `feature/data-cleansing` |
+|                             | Menghapus duplikasi Product ID              |   [ ]  | `feature/data-cleansing` |
+| ⚙️ **Pipeline Engineer**    | Membuat repository & struktur project       |   [x]  | `main`                   |
+|                             | Membuat `generate_dummy.py`                 |   [ ]  | `feature/etl-pipeline`   |
+|                             | Sinkronisasi Product ID                     |   [ ]  | `feature/etl-pipeline`   |
+|                             | Membuat `run_etl.py`                        |   [ ]  | `feature/etl-pipeline`   |
+| 👥 **Semua Anggota**        | Integrasi seluruh pipeline                  |   [ ]  | `main`                   |
+|                             | End-to-end testing                          |   [ ]  | `main`                   |
+|                             | Dokumentasi hasil DWH                       |   [ ]  | —                        |
+|                             | Dokumentasi before/after cleansing          |   [ ]  | —                        |
+
+---
+
+# 🧪 11. Checklist Sebelum Project Dianggap Selesai
+
+### Data
+
+* [ ] Dataset Kaggle berhasil dibaca
+* [ ] Product ID berhasil diekstrak
+* [ ] Harga berhasil dibersihkan
+* [ ] Null berhasil ditangani
+* [ ] Duplikasi berhasil ditangani
+* [ ] Data hasil cleansing tersimpan di `data/interim/`
+
+### Dummy Data
+
+* [ ] Customer berhasil dibuat
+* [ ] Membership berhasil dibuat
+* [ ] Transaction berhasil dibuat
+* [ ] Product ID transaction valid
+* [ ] Data tersimpan di `data/processed/`
+
+### Database
+
+* [ ] `dim_produk` berhasil dibuat
+* [ ] `dim_pelanggan` berhasil dibuat
+* [ ] `dim_waktu` berhasil dibuat
+* [ ] `fact_penjualan` berhasil dibuat
+* [ ] `fact_performa_diskon` berhasil dibuat
+* [ ] Foreign Key terhubung dengan benar
+
+### ETL
+
+* [ ] Extract berhasil
+* [ ] Transform berhasil
+* [ ] Load berhasil
+* [ ] Tidak ada error pada pipeline
+* [ ] Data dapat di-query dari DWH
+
+### Dokumentasi
+
+* [ ] Screenshot data sebelum cleansing
+* [ ] Screenshot data sesudah cleansing
+* [ ] Screenshot tabel DWH
+* [ ] Screenshot hasil query analitik
+* [ ] README sudah diperbarui
+
+---
+
+# 🧑‍💻 12. Quick Start
+
+Kalau semua setup sudah selesai, workflow utamanya cukup:
+
+```bash
+# 1. Clean data
+python src/cleanse_data.py
+
+# 2. Generate customer & transaction
+python src/generate_dummy.py
+
+# 3. Load ke Data Warehouse
+python src/run_etl.py
+```
+
+Atau secara sederhana:
+
+```text
+Kaggle CSV
+    ↓
+cleanse_data.py
+    ↓
+data/interim/
+    ↓
+generate_dummy.py
+    ↓
+data/processed/
+    ↓
+run_etl.py
+    ↓
+⭐ Data Warehouse
+```
+
+---
+
+# 📚 13. Ringkasan Project
+
+| Komponen        | Teknologi / Sumber               |
+| --------------- | -------------------------------- |
+| Dataset         | Kaggle — E-Commerce Data (SHEIN) |
+| Programming     | Python                           |
+| Data Processing | Pandas / Python                  |
+| Data Warehouse  | MySQL / PostgreSQL               |
+| Schema          | Star Schema                      |
+| ETL             | Python                           |
+| Version Control | Git + GitHub                     |
+| Data Produk     | Real Dataset                     |
+| Customer        | Synthetic / Dummy                |
+| Transaction     | Synthetic / Dummy                |
+
+---
+
+## 👥 Prinsip Kerja Tim
+
+> **Jangan hanya membuat script masing-masing. Pastikan seluruh bagian akhirnya dapat terintegrasi menjadi satu pipeline.**
+
+Target akhirnya:
+
+```text
+┌───────────────┐
+│  Kaggle Data  │
+└───────┬───────┘
+        ▼
+┌───────────────┐
+│ Data Cleansing│
+└───────┬───────┘
+        ▼
+┌───────────────┐
+│  Dummy Data   │
+└───────┬───────┘
+        ▼
+┌───────────────┐
+│   ETL Load    │
+└───────┬───────┘
+        ▼
+┌─────────────────────────┐
+│   DATA WAREHOUSE        │
+│                         │
+│  dim_produk             │
+│  dim_pelanggan          │
+│  dim_waktu              │
+│  fact_penjualan         │
+│  fact_performa_diskon   │
+└─────────────────────────┘
+        ▼
+┌─────────────────────────┐
+│   ANALYTICAL QUERY      │
+└─────────────────────────┘
+```
+
+**End Goal:** menghasilkan Data Warehouse E-Commerce yang **terstruktur, terintegrasi, dapat di-query, dan mampu menjawab kebutuhan analitik proyek**
