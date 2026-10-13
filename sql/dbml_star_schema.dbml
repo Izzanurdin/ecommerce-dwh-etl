@@ -1,0 +1,40 @@
+Table dim_produk {
+  sk_produk int [pk, increment]
+  nk_produk_id varchar [not null]
+  nama_produk varchar
+  kategori varchar
+  harga_asli decimal
+  status_aktif boolean
+}
+Table dim_pelanggan {
+  sk_pelanggan int [pk, increment]
+  nk_pelanggan_id varchar [not null]
+  nama_pelanggan varchar
+  tipe_member varchar
+  kota varchar
+}
+Table dim_waktu {
+  sk_waktu int [pk]
+  tanggal date
+  hari int
+  bulan int
+  nama_bulan varchar
+  kuartal int
+  tahun int
+}
+Table fact_penjualan {
+  sk_penjualan int [pk, increment]
+  sk_produk int [ref: > dim_produk.sk_produk]
+  sk_pelanggan int [ref: > dim_pelanggan.sk_pelanggan]
+  sk_waktu int [ref: > dim_waktu.sk_waktu]
+  qty_terjual int
+  total_bayar decimal
+}
+Table fact_performa_diskon {
+  sk_diskon int [pk, increment]
+  sk_produk int [ref: > dim_produk.sk_produk]
+  sk_waktu int [ref: > dim_waktu.sk_waktu]
+  persentase_diskon decimal
+  potongan_harga decimal
+  qty_terjual_diskon int
+}

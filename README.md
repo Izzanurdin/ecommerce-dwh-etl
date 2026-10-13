@@ -702,10 +702,10 @@ Gunakan tabel berikut untuk memantau progres masing-masing anggota.
 
 | Role                        | Task                                        | Status | Branch                   |
 | --------------------------- | ------------------------------------------- | :----: | ------------------------ |
-| 🏗️ **Data Architect**      | Merancang Star Schema (3 Dimensi + 2 Fakta) |   [ ]  | `feature/schema-design`  |
-|                             | Membuat ERD & DBML                          |   [ ]  | `feature/schema-design`  |
-|                             | Membuat DDL Database                        |   [ ]  | `feature/schema-design`  |
-|                             | Setup Database lokal                        |   [ ]  | —                        |
+| 🏗️ **Data Architect**      | Merancang Star Schema (3 Dimensi + 2 Fakta) |   [x]  | `feature/schema-design`  |
+|                             | Membuat ERD & DBML                          |   [x]  | `feature/schema-design`  |
+|                             | Membuat DDL Database                        |   [x]  | `feature/schema-design`  |
+|                             | Setup Database lokal                        |   [x]  | —                        |
 | 🧹 **Cleansing Specialist** | Menentukan kategori dataset Kaggle          |   [ ]  | `feature/data-cleansing` |
 |                             | Ekstraksi Product ID dengan Regex           |   [ ]  | `feature/data-cleansing` |
 |                             | Membersihkan data harga                     |   [ ]  | `feature/data-cleansing` |
